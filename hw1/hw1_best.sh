@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-python3 predict.py "$1" model_best.npy "$2"
+python3 predict_best.py "$1" model_best.pkl "$2"

@@ -1,8 +1,12 @@
+import pickle
 import sys
 
 import numpy as np
 import pandas as pd
+
 from sklearn import linear_model
+from sklearn.preprocessing import QuantileTransformer
+from sklearn.externals import joblib
 
 def reformatData(file_path, encoding, config):
     table = pd.read_csv(file_path, encoding=encoding)
@@ -14,8 +18,6 @@ def reformatData(file_path, encoding, config):
 
     mat = dict()
     for key in config:
-        if key == 'RAINFALL':
-            table_feature[key] = table_feature[key].replace('NR', 0)
         mat[key] = table_feature[key].as_matrix(columns=[str(x) for x in range(24)]). \
                     astype(float).flatten()
     
@@ -24,7 +26,6 @@ def reformatData(file_path, encoding, config):
     ) \
         for date in range(1,13)]
     table_reform = pd.concat(table_list)
-
 
     for key in config:
         table_reform[key] = mat[key]
@@ -133,34 +134,37 @@ def generateTestData(file_path, encoding, config):
 
     table_feature = dict()
     for key in config:
-        if key == 'RAINFALL':
-            table_feature[key] = table.loc[table[1] == key].replace('NR', 0).\
-                    iloc[:,11-config[key][0]:11].astype(float)
-        else:
-            table_feature[key] = table.loc[table[1] == key].\
-                    iloc[:,11-config[key][0]:11].astype(float)
+        table_feature[key] = table.loc[table[1] == key].\
+                iloc[:,2:11].astype(float)
 
     for key in config:
         table_feature[key][table_feature[key] <= config[key][1]] = np.nan
         table_feature[key][table_feature[key] >= config[key][2]] = np.nan
 
-    for key in config:
         table_feature[key].interpolate(method='linear', inplace=True, axis=1)
         table_feature[key].fillna(method='bfill', inplace=True, axis=1)
         table_feature[key].fillna(method='ffill', inplace=True, axis=1)
-        table_feature[key].replace(np.nan, 0, inplace=True)
+
+        table_feature[key][np.isnan(table_feature[key])] = 0
+
+    for key in config:
+        table_feature[key] = np.delete(table_feature[key].as_matrix(), np.s_[:-config[key][0]:], 1)
     
     return(np.concatenate([table_feature[key] for key in config], axis=1))
 
 # Note that PM2.5 must be the first one
 config = { \
-    'PM2.5': [7, 0, 200], \
-    'PM10': [7, 0, np.inf]
+    'PM2.5': [8, 0, 200], \
+    'PM10': [8, 0, np.inf], \
+    'CO': [4, 0, np.inf], \
+    'NOx': [7, 0, np.inf], \
+    'SO2': [6, 0, np.inf], \
 }
 
 if __name__ == '__main__':
     if len(sys.argv) != 3:
-        print('Usage: python3 train.py [data.csv] [model.npy]')
+        print('Usage: python3 train_best.py [data.csv] [model_best.pkl]')
+        exit(1)
 
     ### Load Dataset
     print('Loading Data...')
@@ -172,13 +176,17 @@ if __name__ == '__main__':
 
     Xtrain, ytrain = generateTrainingData(train_scale, config, err=0)
 
+    scaler = QuantileTransformer(output_distribution='uniform')
+    train_scale = scaler.fit_transform(Xtrain[:,20:])
+    Xtrain_scale = np.c_[Xtrain[:,:20], train_scale]
+
     # with scikit-learn
     print('Training...')
     regr = linear_model.LinearRegression()
-    regr.fit(Xtrain, ytrain)
+    regr.fit(Xtrain_scale, ytrain)
 
     ### Saving Model 
     print('Saving model...')
-    w = np.concatenate([np.array([regr.intercept_]), np.array(regr.coef_)])
-    np.save(sys.argv[2], w)
+    model = (scaler, regr)
+    joblib.dump(model, sys.argv[2])
     print('Done!')
