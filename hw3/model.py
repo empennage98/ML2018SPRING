@@ -92,3 +92,17 @@ class WideResNet(nn.Module):
         x = self.fc(x)
 
         return x
+
+class Ensemble(nn.Module):
+
+    def __init__(self, model1, model2, model3, model4):
+        super(Ensemble, self).__init__()
+
+        self.model1 = model1
+        self.model2 = model2
+        self.model3 = model3
+        self.model4 = model4
+
+    def forward(self, x):
+
+        return x

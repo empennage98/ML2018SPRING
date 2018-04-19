@@ -1,6 +1,6 @@
 import os
 import sys
-import urllib
+#import urllib
 
 import torch
 import torch.nn as nn
@@ -13,7 +13,7 @@ from torch.autograd import Variable
 from PIL import Image
 
 from data import SentimentDataset, load_data
-from model import WideResNet
+from model import WideResNet, Ensemble
 
 import pandas as pd
 import numpy as np
@@ -58,27 +58,38 @@ if __name__ == '__main__':
         print('    python3 predict.py [testing data] [prediction file]')
 
     ### Download models ###
-    print('Donwloading models ...')
+    #print('Donwloading models ...')
 
-    for i in range(1, 5):
-        fp_model = 'model_ensemble.' + str(i) + '.pt'
-        url_model = 'https://www.csie.ntu.edu.tw/~b05902042/model_ensemble_' + str(i) + '.pt'
+    #for i in range(1, 5):
+    #    fp_model = 'model_ensemble.' + str(i) + '.pt'
+    #    url_model = 'https://www.csie.ntu.edu.tw/~b05902042/model_ensemble_' + str(i) + '.pt'
 
-        model =  urllib.request.urlopen(url_model)
+    #    model =  urllib.request.urlopen(url_model)
 
-        with open(fp_model, 'wb') as f:
-            f.write(model.read())
+    #    with open(fp_model, 'wb') as f:
+    #        f.write(model.read())
 
-    print('Done!')
+    #print('Done!')
 
     ### Load models ###
     print('Loading models ...')
 
+    ensemble = Ensemble(WideResNet(),WideResNet(),WideResNet(),WideResNet())
+    ensemble.load_state_dict(torch.load('model_ensemble.pt'))
+    ensemble_w = ensemble.state_dict()
+
     models = []
     for i in range(1, 5):
-        fp_model = 'model_ensemble.' + str(i) + '.pt'
         model = WideResNet()
-        model.load_state_dict(torch.load(fp_model))
+        model_w = model.state_dict()
+
+        weight = {}
+        for key, val in model_w.items():
+            weight[key] = ensemble_w['model'+str(i)+'.'+key]
+
+        model_w.update(weight)
+        model.load_state_dict(model_w)
+
         model.cuda()
         models.append(model)
 
