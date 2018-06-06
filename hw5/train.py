@@ -138,7 +138,7 @@ if __name__ == '__main__':
     ### Build word2vec
     print('Build word2vec ... ', end='')
 
-    word2vec = gensim.models.Word2Vec(cooked, size=128, min_count=1, iter=1, workers=4)
+    word2vec = gensim.models.Word2Vec(cooked, size=128, min_count=10, iter=1, workers=4)
 
     print('Done !')
 
@@ -175,7 +175,7 @@ if __name__ == '__main__':
     criterion = nn.NLLLoss()
     optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()))
 
-    for epoch in range(1):
+    for epoch in range(4):
         train(epoch, model, criterion, optimizer, train_loader)
         validate(epoch, model, val_loader)
 
