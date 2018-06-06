@@ -17,7 +17,6 @@ def predict(model, dataloader):
     pred = []
 
     for idx, data in enumerate(dataloader):
-        print('%4d / %4d' % (idx, len(dataloader)))
         inputs = data
         inputs = Variable(inputs.cuda()).t()
  
@@ -76,7 +75,7 @@ if __name__ == '__main__':
     print('Done !')
 
     ### Predict
-    print('Predict ... ')
+    print('Predict ... ', end='')
 
     pred = predict(model, test_loader)
 
